@@ -46,6 +46,16 @@ func createTables(db *sql.DB) {
 			datetime 	INTEGER,
 			FOREIGN KEY (league_id) REFERENCES leagues(id)
 		);
+		CREATE TABLE IF NOT EXISTS games_scrapeInfo (
+			id					INTEGER PRIMARY KEY AUTOINCREMENT,
+			game_id				INTEGER NOT NULL UNIQUE,
+			season_start		INTEGER NOT NULL,
+			type				STRING NOT NULL,
+			league_scrape_id 	INTEGER NOT NULL,
+			game_scrape_id 		INTEGER NOT NULL,
+			'group'				STRING,
+			FOREIGN KEY (game_id) REFERENCES games(id)
+		);
 	`)
 	if err != nil {
 		log.Fatal(err)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"polo-prophet/server/db"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,7 +61,7 @@ func getGameInfo(e *colly.HTMLElement, database *sql.DB, league_id int) {
 		log.Fatal(err)
 	}
 	if id == 0 {
-		db.CreateGame(database, db.Game{
+		id, err = db.CreateGame(database, db.Game{
 			ID:         0,
 			LeagueID:   league_id,
 			GameNumber: game_number,
@@ -68,8 +69,11 @@ func getGameInfo(e *colly.HTMLElement, database *sql.DB, league_id int) {
 			Team2:      team2,
 			DateTime:   datetime,
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else {
-		db.UpdateGame(database, int(id), db.Game{
+		err = db.UpdateGame(database, int(id), db.Game{
 			ID:         0,
 			LeagueID:   league_id,
 			GameNumber: game_number,
@@ -77,8 +81,46 @@ func getGameInfo(e *colly.HTMLElement, database *sql.DB, league_id int) {
 			Team2:      team2,
 			DateTime:   datetime,
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
+	subdomain := e.ChildAttr("a.action", "href")
+	season_start, ltype, league_scrape_id, game_scrape_id, group := getGameScrapeInfo(subdomain)
+	game_id := id
+
+	id, err = db.GameScrapeInfoExists(database, game_id)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if id == 0 {
+		_, err = db.CreateGameScrapeInfo(database, db.GameScrapeInfo{
+			ID: 0,
+			GameID: int(game_id),
+			SeasonStart: season_start,
+			Type: ltype,
+			LeagueScrapeID: league_scrape_id,
+			GameScrapeID: game_scrape_id,
+			Group: group,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		err = db.UpdateGameScrapeInfo(database, int(id), db.GameScrapeInfo{
+			ID: 0,
+			GameID: int(game_id),
+			SeasonStart: season_start,
+			Type: ltype,
+			LeagueScrapeID: league_scrape_id,
+			GameScrapeID: game_scrape_id,
+			Group: group,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func createLeagueSubdomain(info db.LeagueScrapeInfo) string {
@@ -87,4 +129,23 @@ func createLeagueSubdomain(info db.LeagueScrapeInfo) string {
 		ret += fmt.Sprintf("?group=%s", info.Group)
 	}
 	return ret
+}
+
+func getGameScrapeInfo(subdomain string) (int, string, int, int, string) {
+	splits := strings.Split(subdomain, "/")
+
+	season_start, _ := strconv.Atoi(splits[2])
+	ltype := splits[3]
+	league_scrape_id, _ := strconv.Atoi(splits[4])
+
+	splits = strings.Split(splits[5], "?")
+	game_scrape_id, _ := strconv.Atoi(splits[0])
+
+	group := ""
+	if len(splits) > 1 {
+		splits = strings.Split(splits[1], "=")
+		group = splits[1]
+	}
+
+	return season_start, ltype, league_scrape_id, game_scrape_id, group
 }
