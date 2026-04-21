@@ -10,16 +10,12 @@ import (
 	"github.com/gocolly/colly/v2"
 )
 
-var database *sql.DB
-
 func ScrapeLeagues(db *sql.DB) {
-	database = db
-
 	c := colly.NewCollector()
 
 	url := "https://www.wasserball-team-deutschland.de/"
 
-	c.OnHTML(".league-row", getLeagueInfo)
+	c.OnHTML(".league-row", func(e *colly.HTMLElement) {getLeagueInfo(e, db)})
 
 	err := c.Visit(url)
 	if err != nil {
@@ -27,7 +23,8 @@ func ScrapeLeagues(db *sql.DB) {
 	}
 }
 
-func getLeagueInfo(e *colly.HTMLElement) {
+
+func getLeagueInfo(e *colly.HTMLElement, database *sql.DB) {
 	name := e.ChildText(".league-name")
 	gender := e.ChildText(".muted.small")
 	subdomain := e.ChildAttr(".league-name", "href")
@@ -100,3 +97,4 @@ func getLeagueScrapeInfo(subdomain string) (int, string, int, string) {
 
 	return season_start, ltype, scrape_id, group
 }
+

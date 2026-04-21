@@ -49,6 +49,27 @@ func LeagueExists(db *sql.DB, name string) (int64, error) {
 	return id, nil
 }
 
+func GetAllLeagueIds(db *sql.DB) ([]int64, error) {
+	var ids []int64
+	rows, err := db.Query(`
+		SELECT id FROM leagues
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
 func CreateLeagueScrapeInfo(db *sql.DB, info LeagueScrapeInfo) (int64, error) {
 	result, err := db.Exec(`
 		INSERT INTO leagues_scrapeInfo
@@ -79,4 +100,24 @@ func LeagueScrapeInfoExists(db *sql.DB, league_id int64) (int64, error) {
 		return 0, err
 	}
 	return id, nil
+}
+
+func GetScrapeInfo(db *sql.DB, id int64) (LeagueScrapeInfo, error) {
+	var did int
+	var league_id int
+	var season_start int
+	var ltype string
+	var scrape_id int
+	var group string
+	err := db.QueryRow(`
+		SELECT * FROM leagues_scrapeInfo
+		WHERE id = ?
+	`, id).Scan(&did, &league_id, &season_start, &ltype, &scrape_id, &group)
+	if err == sql.ErrNoRows {
+		return LeagueScrapeInfo{}, nil
+	}
+	if err != nil {
+		return LeagueScrapeInfo{}, err
+	}
+	return LeagueScrapeInfo{ID: did, LeagueID: league_id, SeasonStart: season_start, Type: ltype, ScrapeID: scrape_id, Group: group}, nil
 }
