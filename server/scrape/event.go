@@ -30,6 +30,22 @@ func ScrapeEvents(database *sql.DB, game_id int64) {
 		getEventInfo(h, database, int(game_id))
 	})
 
+	c.OnError(func(r *colly.Response, err error) {
+		if r.StatusCode == 429 {
+			retryAfter := r.Headers.Get("Retry-After")
+			wait := 5 * time.Second
+			if secs, err := strconv.Atoi(retryAfter); err == nil {
+				wait = time.Duration(secs) * time.Second
+			}
+			log.Printf("Retrying after %dseconds ...\n", wait / 1000000000)
+			time.Sleep(wait)
+			r.Request.Retry()
+		}
+		if r.StatusCode == 502 {
+			log.Printf("Bad Gateway: Trying again...")
+			r.Request.Retry()
+		}
+	})
 
 	err = c.Visit(domain)
 	if err != nil {
