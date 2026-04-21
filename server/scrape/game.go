@@ -6,6 +6,7 @@ import (
 	"log"
 	"polo-prophet/server/db"
 	"strings"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -45,7 +46,14 @@ func getGameInfo(e *colly.HTMLElement, database *sql.DB, league_id int) {
 		team2 = teams[1]
 	}
 
-	datetime := 0
+	var datetime int
+	datetime_string := e.ChildText("span.pill")
+	t, err := time.Parse("02.01.06, 15:04 Uhr", datetime_string)
+	if err != nil {
+		datetime = 0
+	} else {
+		datetime = int(t.UnixMilli())
+	}
 
 	id, err := db.GameExists(database, league_id, game_number)
 	if err != nil {
