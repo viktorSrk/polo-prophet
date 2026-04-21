@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"polo-prophet/server/db"
+	"strings"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -12,21 +13,20 @@ import (
 func ScrapeGames(database *sql.DB, league_id int64) {
 	c := colly.NewCollector()
 
-	id, err := db.LeagueScrapeInfoExists(database, league_id)
+	scrapeInfo_id, err := db.LeagueScrapeInfoExists(database, league_id)
 	if err != nil {
 		log.Fatal(err)
 	}
-	scrapeInfo, err := db.GetScrapeInfo(database, id)
+	scrapeInfo, err := db.GetScrapeInfo(database, scrapeInfo_id)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	domain := "https://www.wasserball-team-deutschland.de" + createLeagueSubdomain(scrapeInfo)
-	fmt.Println(league_id)
-	fmt.Println(scrapeInfo)
-	fmt.Println(domain)
 
-	c.OnHTML(".match-card", getGameInfo)
+	c.OnHTML(".match-card", func(e *colly.HTMLElement) {
+		getGameInfo(e, database, int(league_id))
+	})
 
 	err = c.Visit(domain)
 	if err != nil {
@@ -34,11 +34,43 @@ func ScrapeGames(database *sql.DB, league_id int64) {
 	}
 }
 
-func getGameInfo(e *colly.HTMLElement) {
+func getGameInfo(e *colly.HTMLElement, database *sql.DB, league_id int) {
+	game_number := strings.TrimPrefix(e.ChildText("span.tag"), "Spiel ")
+
 	teams := e.ChildTexts(".team-name")
+	var team1 string
+	var team2 string
 	if len(teams) == 2 {
-		fmt.Println("Home: " + teams[0] + ", Away: " + teams[1])
+		team1 = teams[0]
+		team2 = teams[1]
 	}
+
+	datetime := 0
+
+	id, err := db.GameExists(database, league_id, game_number)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if id == 0 {
+		db.CreateGame(database, db.Game{
+			ID:         0,
+			LeagueID:   league_id,
+			GameNumber: game_number,
+			Team1:      team1,
+			Team2:      team2,
+			DateTime:   datetime,
+		})
+	} else {
+		db.UpdateGame(database, int(id), db.Game{
+			ID:         0,
+			LeagueID:   league_id,
+			GameNumber: game_number,
+			Team1:      team1,
+			Team2:      team2,
+			DateTime:   datetime,
+		})
+	}
+
 }
 
 func createLeagueSubdomain(info db.LeagueScrapeInfo) string {
