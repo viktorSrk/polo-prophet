@@ -30,10 +30,20 @@ func ScrapeGames(database *sql.DB, league_id int64) {
 		getGameInfo(e, database, int(league_id))
 	})
 
-	err = c.Visit(domain)
-	if err != nil {
-		log.Print(err)
-	}
+	c.OnError(func(r *colly.Response, err error) {
+		// log.Printf("%d: Status: %d\n", game_id, r.StatusCode)
+		switch r.StatusCode {
+		case 429:
+			time.Sleep(2000 * time.Millisecond) // fallback
+			r.Request.Retry()
+		case 502:
+			// log.Println(domain)
+		default:
+			log.Println(err)
+		}
+	})
+
+	c.Visit(domain)
 }
 
 func getGameInfo(e *colly.HTMLElement, database *sql.DB, league_id int) {
