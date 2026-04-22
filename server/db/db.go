@@ -57,11 +57,13 @@ func createTables(db *sql.DB) {
 			FOREIGN KEY (game_id) REFERENCES games(id)
 		);
 		CREATE TABLE IF NOT EXISTS events (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			id 		INTEGER PRIMARY KEY AUTOINCREMENT,
 			game_id INTEGER NOT NULL,
-			team STRING,
-			player STRING,
-			type STRING,
+			team 	STRING,
+			player 	STRING,
+			type 	STRING,
+			period 	INT,
+			time 	INT,
 			FOREIGN KEY (game_id) REFERENCES games(id)
 		);
 	`)

@@ -8,14 +8,16 @@ type Event struct {
 	Team   string
 	Player string
 	Type   string
+	Period int
+	Time   int
 }
 
 func CreateEvent(db *sql.DB, event Event) (int64, error) {
 	result, err := db.Exec(`
 		INSERT INTO events
-		(game_id, team, player, type)
-		VALUES (?, ?, ?, ?)
-	`, event.GameID, event.Team, event.Player, event.Type)
+		(game_id, team, player, type, period, time)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, event.GameID, event.Team, event.Player, event.Type, event.Period, event.Time)
 	if err != nil {
 		return 0, err
 	}
