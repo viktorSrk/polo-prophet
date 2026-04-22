@@ -63,6 +63,27 @@ func GameExists(db *sql.DB, league_id int, game_number string) (int64, error) {
 	return id, nil
 }
 
+func GetAllGameIds(db *sql.DB) ([]int64, error) {
+	var ids []int64
+	rows, err := db.Query(`
+		SELECT id FROM games
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
 func CreateGameScrapeInfo(db *sql.DB, info GameScrapeInfo) (int64, error) {
 	result, err := db.Exec(`
 		INSERT INTO games_scrapeInfo
@@ -103,4 +124,33 @@ func GameScrapeInfoExists(db *sql.DB, game_id int64) (int64, error) {
 		return 0, err
 	}
 	return id, nil
+}
+
+func GetGameScrapeInfo(db *sql.DB, id int64) (GameScrapeInfo, error) {
+	var did int
+	var game_id int
+	var season_start int
+	var ltype string
+	var league_scrape_id int
+	var game_scrape_id int
+	var group string
+	err := db.QueryRow(`
+		SELECT * FROM games_scrapeInfo
+		WHERE id = ?
+	`, id).Scan(&did, &game_id, &season_start, &ltype, &league_scrape_id, &game_scrape_id, &group)
+	if err == sql.ErrNoRows {
+		return GameScrapeInfo{}, nil
+	}
+	if err != nil {
+		return GameScrapeInfo{}, err
+	}
+	return GameScrapeInfo{
+		ID:             did,
+		GameID:         game_id,
+		SeasonStart:    season_start,
+		Type:           ltype,
+		LeagueScrapeID: league_scrape_id,
+		GameScrapeID:   game_scrape_id,
+		Group:          group,
+	}, nil
 }

@@ -13,15 +13,25 @@ func main() {
 
 	go server.Start(":8080")
 
-	go func ()  {
-		scrape.ScrapeLeagues(database)
+	go scrape.ScrapeLeagues(database)
 
+	go func() {
 		league_ids, err := db.GetAllLeagueIds(database)
 		if err != nil {
 			log.Fatal(err)
 		}
 		for _, id := range league_ids {
 			scrape.ScrapeGames(database, id)
+		}
+	}()
+
+	go func() {
+		game_ids, err := db.GetAllGameIds(database)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, id := range game_ids {
+			scrape.ScrapeEvents(database, id)
 		}
 	}()
 
