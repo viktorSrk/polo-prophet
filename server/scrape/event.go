@@ -7,7 +7,7 @@ import (
 	"polo-prophet/server/db"
 	"strconv"
 	"strings"
-	// "time"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -31,6 +31,7 @@ func ScrapeEvents(database *sql.DB, game_id int64) {
 	})
 
 	c.OnResponse(func(r *colly.Response) {
+		// log.Printf("%d: Status: %d\n", game_id, r.StatusCode)
 		if r.StatusCode == 200 {
 			if exist, _ := db.EventsExists(database, int(game_id)); exist {
 				db.DeleteEventsForGame(database, game_id)
@@ -38,10 +39,20 @@ func ScrapeEvents(database *sql.DB, game_id int64) {
 		}
 	})
 
-	err = c.Visit(domain)
-	if err != nil {
-		log.Print(err)
-	}
+	c.OnError(func(r *colly.Response, err error) {
+		// log.Printf("%d: Status: %d\n", game_id, r.StatusCode)
+		switch r.StatusCode {
+		case 429:
+			time.Sleep(2000 * time.Millisecond) // fallback
+			r.Request.Retry()
+		case 502:
+			// log.Println(domain)
+		default:
+			log.Println(err)
+		}
+	})
+
+	c.Visit(domain)
 }
 
 func getEventInfo(e *colly.HTMLElement, database *sql.DB, game_id int) {
@@ -70,7 +81,7 @@ func getEventInfo(e *colly.HTMLElement, database *sql.DB, game_id int) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			time = minutes * 60 + seconds
+			time = minutes*60 + seconds
 		} else {
 			time = 0
 		}
