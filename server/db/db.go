@@ -56,6 +56,14 @@ func createTables(db *sql.DB) {
 			'group'				STRING,
 			FOREIGN KEY (game_id) REFERENCES games(id)
 		);
+		CREATE TABLE IF NOT EXISTS events (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			game_id INTEGER NOT NULL,
+			team STRING,
+			player STRING,
+			type STRING,
+			FOREIGN KEY (game_id) REFERENCES games(id)
+		);
 	`)
 	if err != nil {
 		log.Fatal(err)

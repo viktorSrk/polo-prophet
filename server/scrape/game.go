@@ -41,10 +41,6 @@ func ScrapeGames(database *sql.DB, league_id int64) {
 			time.Sleep(wait)
 			r.Request.Retry()
 		}
-		if r.StatusCode == 502 {
-			log.Printf("Bad Gateway: Trying again...")
-			r.Request.Retry()
-		}
 	})
 
 	err = c.Visit(domain)

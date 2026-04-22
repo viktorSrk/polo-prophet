@@ -31,19 +31,25 @@ func ScrapeEvents(database *sql.DB, game_id int64) {
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
+		log.Printf("GameID %d, StatusCode %d\n", game_id, r.StatusCode)
 		if r.StatusCode == 429 {
 			retryAfter := r.Headers.Get("Retry-After")
 			wait := 5 * time.Second
 			if secs, err := strconv.Atoi(retryAfter); err == nil {
 				wait = time.Duration(secs) * time.Second
 			}
-			log.Printf("Retrying after %dseconds ...\n", wait / 1000000000)
+			log.Printf("EventScraping for Game_ID %d: Retrying after %dseconds ...\n", game_id, wait/1000000000)
 			time.Sleep(wait)
 			r.Request.Retry()
 		}
-		if r.StatusCode == 502 {
-			log.Printf("Bad Gateway: Trying again...")
-			r.Request.Retry()
+	})
+
+	c.OnResponse(func(r *colly.Response) {
+		log.Printf("GameID %d, StatusCode %d\n", game_id, r.StatusCode)
+		if r.StatusCode == 200 {
+			if exist, _ := db.EventsExists(database, int(game_id)); exist {
+				db.DeleteEventsForGame(database, game_id)
+			}
 		}
 	})
 
@@ -55,7 +61,18 @@ func ScrapeEvents(database *sql.DB, game_id int64) {
 
 func getEventInfo(e *colly.HTMLElement, database *sql.DB, game_id int) {
 	team := strings.TrimPrefix(e.Attr("class"), "timeline-item ")
-	fmt.Println(team)
+
+	player := e.ChildText("h3")
+
+	etype := e.ChildText(".timeline-top span.muted")
+
+	db.CreateEvent(database, db.Event{
+		ID:     0,
+		GameID: game_id,
+		Team:   team,
+		Player: player,
+		Type:   etype,
+	})
 }
 
 func createGameSubdomain(info db.GameScrapeInfo) string {
